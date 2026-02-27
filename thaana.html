@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thaana Banyumasan Auto v6 - Fixed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Import Noto Sans Thaana untuk memastikan tampilan script benar */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+Thaana:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        .thaana-text {
+            direction: rtl;
+            font-family: 'Noto Sans Thaana', sans-serif;
+            line-height: 1.8;
+            font-size: 1.75rem;
+        }
+
+        .custom-card {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .ltr-mode { direction: ltr; text-align: left; font-family: 'Inter', sans-serif; }
+        .rtl-mode { direction: rtl; text-align: right; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-2xl w-full bg-white rounded-3xl p-6 md:p-10 custom-card">
+        <header class="text-center mb-6">
+            <h1 class="text-2xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Thaana Banyumasan</h1>
+            <div class="flex items-center justify-center gap-2 mt-2">
+                <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full uppercase">Auto v6 Fixed</span>
+                <span id="directionLabel" class="text-slate-500 text-sm font-medium">Mendeteksi Input...</span>
+            </div>
+        </header>
+
+        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-8 rounded-r-xl">
+            <div class="grid grid-cols-2 gap-4 text-[11px] sm:text-xs text-indigo-800">
+                <div>
+                    <strong>Vokal:</strong> <code class="bg-indigo-200 px-1 rounded">e</code> (pepet), <code class="bg-indigo-200 px-1 rounded">é</code> (taling)
+                </div>
+                <div>
+                    <strong>Serapan:</strong> f, v, z, kh, sy
+                </div>
+            </div>
+            <p class="text-[10px] text-indigo-400 mt-2 uppercase font-bold tracking-wider italic text-center">Otomatis menambahkan Alifu (އ) pada vokal mandiri</p>
+        </div>
+
+        <div class="space-y-6">
+            <div class="space-y-2">
+                <label class="block text-sm font-semibold text-slate-600 ml-1">Input (Latin atau Thaana):</label>
+                <textarea 
+                    id="input" 
+                    placeholder="Ketik Latin atau tempel aksara Thaana di sini..."
+                    class="w-full h-36 p-5 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-lg resize-none"
+                ></textarea>
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex items-center justify-between ml-1">
+                    <label class="block text-sm font-semibold text-slate-600">Hasil Konversi:</label>
+                    <button 
+                        onclick="copyOutput()" 
+                        class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-colors flex items-center gap-2 uppercase"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Salin
+                    </button>
+                </div>
+                <textarea 
+                    id="output" 
+                    readonly 
+                    class="w-full h-36 p-5 rounded-2xl border-2 border-slate-50 bg-slate-50 outline-none resize-none overflow-y-auto"
+                ></textarea>
+            </div>
+        </div>
+
+        <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium shadow-2xl transition-all duration-300 opacity-0 pointer-events-none">
+            Berhasil disalin!
+        </div>
+    </div>
+
+    <script>
+        const inputArea = document.getElementById("input");
+        const outputArea = document.getElementById("output");
+        const directionLabel = document.getElementById("directionLabel");
+        const toast = document.getElementById("toast");
+
+        const L2T_CONSONANTS = {
+            b: "ބ", c: "ޗ", d: "ދ", g: "ގ", h: "ހ", j: "ޖ", k: "ކ", 
+            l: "ލ", m: "މ", n: "ނ", p: "ޕ", r: "ރ", s: "ސ", t: "ތ", 
+            w: "ވ", v: "ވ", y: "ޔ", f: "ފ", z: "ޒ",
+            kh: "ޚ", sy: "ޝ", ng: "ންގ", ny: "ޏ", th: "ތްހ", dh: "ދްހ"
+        };
+
+        const L2T_VOWELS = {
+            a: "ަ", i: "ި", u: "ު", e: "ަް", é: "ެ", o: "ޮ"
+        };
+
+        const L2T_OTHERS = {
+            "0": "٠", "1": "١", "2": "٢", "3": "٣", "4": "٤",
+            "5": "٥", "6": "٦", "7": "٧", "8": "٨", "9": "٩",
+            ",": "،", "?": "؟", ";": "؛"
+        };
+
+        function isThaana(text) {
+            return /[\u0780-\u07BF]/.test(text);
+        }
+
+        function toThaana(text) {
+            if (!text) return "";
+            text = text.toLowerCase().normalize('NFC');
+
+            // 1. Ganti klaster konsonan dulu (ng, ny, kh, dll)
+            // Kita beri penanda agar tidak diproses ulang sebagai huruf tunggal
+            let processed = text;
+            const clusters = ["kh", "sy", "ng", "ny", "th", "dh"];
+            clusters.forEach(c => {
+                processed = processed.replace(new RegExp(c, 'g'), L2T_CONSONANTS[c]);
+            });
+
+            let result = "";
+            for (let i = 0; i < processed.length; i++) {
+                let char = processed[i];
+                
+                if (L2T_VOWELS[char]) {
+                    // Cek apakah vokal ini punya konsonan sebelumnya (termasuk konsonan hasil replace)
+                    const prev = result.slice(-1);
+                    const isPrevConsonant = /[\u0780-\u07A5]/.test(prev);
+                    
+                    if (isPrevConsonant) {
+                        result += L2T_VOWELS[char];
+                    } else {
+                        // Vokal mandiri (di awal atau setelah spasi/vokal lain) butuh Alifu (އ)
+                        result += "އ" + L2T_VOWELS[char];
+                    }
+                } else if (L2T_CONSONANTS[char]) {
+                    result += L2T_CONSONANTS[char];
+                } else if (L2T_OTHERS[char]) {
+                    result += L2T_OTHERS[char];
+                } else {
+                    result += char;
+                }
+            }
+            return result;
+        }
+
+        function toLatin(text) {
+            if (!text) return "";
+            let res = text;
+            
+            // Urutan reverse harus dari yang paling panjang (klaster)
+            const reverseMap = [
+                {t: "ަް", l: "e"}, {t: "ންގ", l: "ng"}, {t: "ޏ", l: "ny"}, 
+                {t: "ތްހ", l: "th"}, {t: "ދްހ", l: "dh"}, {t: "ޚ", l: "kh"}, 
+                {t: "ޝ", l: "sy"}, {t: "ަ", l: "a"}, {t: "ި", l: "i"}, 
+                {t: "ު", l: "u"}, {t: "ެ", l: "é"}, {t: "ޮ", l: "o"},
+                {t: "ބ", l: "b"}, {t: "ޗ", l: "c"}, {t: "ދ", l: "d"}, 
+                {t: "ގ", l: "g"}, {t: "ހ", l: "h"}, {t: "ޖ", l: "j"}, 
+                {t: "ކ", l: "k"}, {t: "ލ", l: "l"}, {t: "މ", l: "m"}, 
+                {t: "ނ", l: "n"}, {t: "ޕ", l: "p"}, {t: "ރ", l: "r"}, 
+                {t: "ސ", l: "s"}, {t: "ތ", l: "t"}, {t: "ވ", l: "w"}, 
+                {t: "ޔ", l: "y"}, {t: "ފ", l: "f"}, {t: "ޒ", l: "z"},
+                {t: "٠", l: "0"}, {t: "١", l: "1"}, {t: "٢", l: "2"}, 
+                {t: "٣", l: "3"}, {t: "٤", l: "4"}, {t: "٥", l: "5"}, 
+                {t: "٦", l: "6"}, {t: "٧", l: "7"}, {t: "٨", l: "8"}, 
+                {t: "٩", l: "9"}, {t: "،", l: ","}, {t: "؟", l: "?"}, {t: "؛", l: ";"}
+            ];
+
+            // Hapus Alifu pembawa vokal mandiri agar tidak jadi 'a' double
+            res = res.replace(/އ(?=[ިަުެޮ])/g, "");
+
+            reverseMap.forEach(item => {
+                res = res.split(item.t).join(item.l);
+            });
+
+            return res;
+        }
+
+        function updateTransliteration() {
+            const val = inputArea.value;
+            if (isThaana(val)) {
+                directionLabel.textContent = "Thaana → Latin";
+                outputArea.value = toLatin(val);
+                outputArea.className = "w-full h-36 p-5 rounded-2xl border-2 border-slate-50 bg-slate-50 text-2xl text-indigo-900 ltr-mode outline-none resize-none overflow-y-auto";
+            } else {
+                directionLabel.textContent = "Latin → Thaana";
+                outputArea.value = toThaana(val);
+                outputArea.className = "w-full h-36 p-5 rounded-2xl border-2 border-slate-50 bg-slate-50 text-indigo-900 thaana-text rtl-mode outline-none resize-none overflow-y-auto";
+            }
+        }
+
+        function copyOutput() {
+            if (!outputArea.value) return;
+            outputArea.select();
+            document.execCommand('copy');
+            toast.classList.replace("opacity-0", "opacity-100");
+            toast.classList.replace("pointer-events-none", "pointer-events-auto");
+            setTimeout(() => {
+                toast.classList.replace("opacity-100", "opacity-0");
+                toast.classList.replace("pointer-events-auto", "pointer-events-none");
+            }, 2000);
+        }
+
+        inputArea.addEventListener("input", updateTransliteration);
+    </script>
+</body>
+</html>
