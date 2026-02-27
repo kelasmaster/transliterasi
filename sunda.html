@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konverter Aksara Sunda Bi-Direksional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .sunda-font {
+            font-size: 1.75rem;
+            line-height: 2.5rem;
+            color: #1e293b;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">Aksara Sunda Automation</h1>
+            <p class="text-slate-600">Konversi otomatis Latin ⇌ Sunda secara real-time.</p>
+        </div>
+
+        <!-- Main Interface -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Input Area -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-slate-700">Input</span>
+                        <span id="inputBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase tracking-wider">Otomatis</span>
+                    </div>
+                    <button id="clearBtn" class="text-xs text-red-500 hover:text-red-700 font-medium">Hapus Semua</button>
+                </div>
+                <textarea 
+                    id="textInput" 
+                    class="w-full h-80 p-4 focus:outline-none resize-none text-slate-700 placeholder-slate-400 text-lg"
+                    placeholder="Ketik Latin atau tempel Aksara Sunda di sini..."
+                ></textarea>
+            </div>
+
+            <!-- Output Area -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-slate-700">Hasil Konversi</span>
+                    <button id="copyBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
+                        Salin Hasil
+                    </button>
+                </div>
+                <div 
+                    id="textOutput" 
+                    class="w-full h-80 p-4 overflow-y-auto custom-scrollbar break-words whitespace-pre-wrap text-lg"
+                ></div>
+            </div>
+        </div>
+
+        <!-- Info/Instructions -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    Deteksi Otomatis
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">Sistem akan mengenali karakter Sunda (\u1B80-\u1BBF). Jika ditemukan, mode beralih ke Sunda ➔ Latin.</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                    Latin ke Sunda
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">Mendukung rarangken sisipan (y, r, l), konsonan mati (pamaéh), dan vokal khusus (é, e, eu).</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-amber-500 rounded-full"></span>
+                    Sunda ke Latin
+                </h3>
+                <p class="text-xs text-slate-500 leading-relaxed">Tempel naskah Aksara Sunda untuk mendapatkan transliterasi Latin secara instan.</p>
+            </div>
+        </div>
+
+        <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-2 rounded-full text-sm font-medium opacity-0 transition-opacity pointer-events-none shadow-lg">
+            Berhasil disalin ke papan klip!
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const textOutput = document.getElementById('textOutput');
+        const copyBtn = document.getElementById('copyBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const inputBadge = document.getElementById('inputBadge');
+        const toast = document.getElementById('toast');
+
+        // Mapping Data (Latin to Sunda)
+        const KONS_MANDIRI = {
+            'ka': 'ᮊ', 'ga': 'ᮌ', 'nga': 'ᮍ', 'ca': 'ᮎ', 'ja': 'ᮏ', 'nya': 'ᮑ',
+            'ta': 'ᮒ', 'da': 'ᮓ', 'na': 'ᮔ', 'pa': 'ᮕ', 'ba': 'ᮘ', 'ma': 'ᮙ',
+            'ya': 'ᮚ', 'ra': 'ᮛ', 'la': 'ᮜ', 'wa': 'ᮝ', 'sa': 'ᮞ', 'ha': 'ᮠ',
+            'fa': 'ᮖ', 'va': 'ᮗ', 'qa': 'ᮟ', 'xa': 'ᮠ', 'za': 'ᮐ'
+        };
+
+        const VOKAL_MANDIRI = { 'a': 'ᮃ', 'i': 'ᮄ', 'u': 'ᮅ', 'é': 'ᮆ', 'o': 'ᮇ', 'e': 'ᮈ', 'eu': 'ᮉ' };
+        const RARANGKEN_VOKAL = { 'i': 'ᮤ', 'u': 'ᮥ', 'é': 'ᮦ', 'o': 'ᮧ', 'e': 'ᮨ', 'eu': 'ᮩ' };
+        const RARANGKEN_AKHIR = { 'ng': 'ᮀ', 'r': 'ᮁ', 'h': 'ᮂ' };
+        const RARANGKEN_SISIPAN = { 'y': 'ᮡ', 'r': 'ᮢ', 'l': 'ᮣ' };
+        const PAMAEH = '᮪';
+
+        // Mapping Data (Sunda to Latin - Reverse)
+        const REVERSE_KONS = Object.fromEntries(Object.entries(KONS_MANDIRI).map(([k, v]) => [v, k.slice(0, -1)]));
+        const REVERSE_VOKAL_MANDIRI = Object.fromEntries(Object.entries(VOKAL_MANDIRI).map(([k, v]) => [v, k]));
+        const REVERSE_RAR_VOKAL = Object.fromEntries(Object.entries(RARANGKEN_VOKAL).map(([k, v]) => [v, k]));
+        const REVERSE_RAR_AKHIR = Object.fromEntries(Object.entries(RARANGKEN_AKHIR).map(([k, v]) => [v, k]));
+        const REVERSE_RAR_SISIPAN = Object.fromEntries(Object.entries(RARANGKEN_SISIPAN).map(([k, v]) => [v, k]));
+
+        function showToast() {
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        }
+
+        function isAksaraSunda(text) {
+            return /[\u1B80-\u1BBF]/.test(text);
+        }
+
+        // --- LATIN TO SUNDA ---
+        function convertToSunda(text) {
+            if (!text) return "";
+            let normalized = text.toLowerCase().replace(/th/g, 't').replace(/dh/g, 'd');
+            let result = "";
+            let i = 0;
+
+            while (i < normalized.length) {
+                let char = normalized[i];
+                let next = normalized[i + 1] || "";
+                if (!/[a-z|é]/.test(char)) { result += char; i++; continue; }
+
+                let cons = "", medial = "", vokal = "";
+                if (char === 'n' && next === 'g') { cons = "nga"; i += 2; }
+                else if (char === 'n' && next === 'y') { cons = "nya"; i += 2; }
+                else if (KONS_MANDIRI[char + "a"]) { cons = char + "a"; i++; }
+
+                if (cons && /[yrl]/.test(normalized[i])) {
+                    let pV = normalized[i+1];
+                    let pEu = normalized.substring(i+1, i+3);
+                    if (/[aeioué]/.test(pV) || pEu === 'eu') { medial = normalized[i]; i++; }
+                }
+
+                let currentIsEu = normalized.substring(i, i+2) === 'eu';
+                if (currentIsEu) { vokal = 'eu'; i += 2; }
+                else if (/[aeioué]/.test(normalized[i])) { vokal = normalized[i]; i++; }
+
+                if (cons) {
+                    let base = KONS_MANDIRI[cons];
+                    if (medial) base += RARANGKEN_SISIPAN[medial];
+                    if (vokal) {
+                        if (vokal !== 'a') base += RARANGKEN_VOKAL[vokal];
+                        result += base;
+                    } else {
+                        let isSpecial = false;
+                        if (!medial) {
+                            if (cons === 'nga' && !/[aeioué]/.test(normalized[i])) { result += RARANGKEN_AKHIR['ng']; isSpecial = true; }
+                            else if (cons === 'ra' && !/[aeioué]/.test(normalized[i])) { result += RARANGKEN_AKHIR['r']; isSpecial = true; }
+                            else if (cons === 'ha' && !/[aeioué]/.test(normalized[i])) { result += RARANGKEN_AKHIR['h']; isSpecial = true; }
+                        }
+                        if (!isSpecial) result += base + PAMAEH;
+                    }
+                } else if (vokal) {
+                    result += VOKAL_MANDIRI[vokal];
+                } else { i++; }
+            }
+            return result;
+        }
+
+        // --- SUNDA TO LATIN ---
+        function convertToLatin(text) {
+            if (!text) return "";
+            let result = "";
+            let i = 0;
+
+            while (i < text.length) {
+                let char = text[i];
+                
+                if (REVERSE_VOKAL_MANDIRI[char]) {
+                    result += REVERSE_VOKAL_MANDIRI[char];
+                    i++;
+                } else if (REVERSE_KONS[char]) {
+                    let base = REVERSE_KONS[char];
+                    let next = text[i + 1] || "";
+                    let currentResult = base;
+                    let hasVowelModifier = false;
+                    let skipCount = 1;
+
+                    // Check for Medial
+                    if (REVERSE_RAR_SISIPAN[next]) {
+                        currentResult += REVERSE_RAR_SISIPAN[next];
+                        skipCount++;
+                        next = text[i + skipCount] || "";
+                    }
+
+                    // Check for Vowel Modifier
+                    if (REVERSE_RAR_VOKAL[next]) {
+                        currentResult += REVERSE_RAR_VOKAL[next];
+                        hasVowelModifier = true;
+                        skipCount++;
+                    } else if (next === PAMAEH) {
+                        hasVowelModifier = true; // effectively removes 'a'
+                        skipCount++;
+                    } else {
+                        currentResult += "a";
+                    }
+                    
+                    result += currentResult;
+                    i += skipCount;
+                } else if (REVERSE_RAR_AKHIR[char]) {
+                    result += REVERSE_RAR_AKHIR[char];
+                    i++;
+                } else {
+                    result += char;
+                    i++;
+                }
+            }
+            return result;
+        }
+
+        // Real-time Event
+        textInput.addEventListener('input', () => {
+            const rawText = textInput.value;
+            if (!rawText) {
+                textOutput.textContent = "";
+                textOutput.classList.remove('sunda-font');
+                inputBadge.textContent = "Otomatis";
+                inputBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase tracking-wider";
+                return;
+            }
+
+            if (isAksaraSunda(rawText)) {
+                // Sunda to Latin
+                textOutput.textContent = convertToLatin(rawText);
+                textOutput.classList.remove('sunda-font');
+                inputBadge.textContent = "Sunda ➔ Latin";
+                inputBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wider";
+            } else {
+                // Latin to Sunda
+                textOutput.textContent = convertToSunda(rawText);
+                textOutput.classList.add('sunda-font');
+                inputBadge.textContent = "Latin ➔ Sunda";
+                inputBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider";
+            }
+        });
+
+        // Copy Logic
+        copyBtn.addEventListener('click', () => {
+            const text = textOutput.textContent;
+            if (!text) return;
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast();
+            } catch (err) {}
+            document.body.removeChild(textArea);
+        });
+
+        // Clear Logic
+        clearBtn.addEventListener('click', () => {
+            textInput.value = "";
+            textOutput.textContent = "";
+            textInput.focus();
+        });
+    </script>
+</body>
+</html>
